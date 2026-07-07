@@ -179,9 +179,11 @@ function PremiumCta() {
 function PinnedHero() {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const introRef = useRef<HTMLVideoElement>(null)
   const timeRef = useRef(0)
   const [p, setP] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [introOn, setIntroOn] = useState(true)
 
   useEffect(() => {
     const video = videoRef.current
@@ -200,6 +202,11 @@ function PinnedHero() {
         const progress = scrollable > 0 ? clamp01(-rect.top / scrollable) : 0
         // Quantize so React only re-renders on visible movement.
         setP(Math.round(progress * 1000) / 1000)
+
+        // The idle intro comes back only once the scroll is at the top AND the
+        // lerped scrub time has actually settled at frame 0 — both videos share
+        // that frame, so the crossfade never jumps.
+        setIntroOn(progress < 0.003 && timeRef.current < 0.05)
 
         const duration = video.duration || FALLBACK_DURATION
         const target = progressToTime(progress, duration)
@@ -223,6 +230,20 @@ function PinnedHero() {
     }
   }, [])
 
+  useEffect(() => {
+    const intro = introRef.current
+    if (!intro) return
+    if (introOn) {
+      // Always restart from frame 0 — it matches scrub frame 0 pixel-for-pixel.
+      intro.currentTime = 0
+      intro.play().catch(() => {})
+      return
+    }
+    // Let the 0.4s fade-out finish before pausing.
+    const timeout = window.setTimeout(() => intro.pause(), 450)
+    return () => window.clearTimeout(timeout)
+  }, [introOn])
+
   const showA = p <= 0.01
 
   // Block B: cascade pours in p 0.40→0.52, reading window to 0.59,
@@ -243,6 +264,24 @@ function PinnedHero() {
           playsInline
           preload="auto"
           className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+
+        {/* Idle intro: ambient loop of scrub frame 0, crossfades out on scroll */}
+        <video
+          ref={introRef}
+          src="/intro_loop.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="absolute inset-0 z-20 h-full w-full object-cover object-center"
+          style={{
+            opacity: introOn ? 1 : 0,
+            transition: introOn
+              ? 'opacity 0.6s ease-in-out'
+              : 'opacity 0.4s ease-out',
+          }}
         />
 
         {/* Mobile scrims: keep text legible over the bright suit */}
