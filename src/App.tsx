@@ -7,7 +7,7 @@ import {
   type CSSProperties,
 } from 'react'
 import Lenis from 'lenis'
-import { ArrowRight, ChevronDown } from 'lucide-react'
+import { ArrowUpRight, ChevronDown } from 'lucide-react'
 
 /**
  * scrub.mp4 = clip 1 + clip 2, every frame is a keyframe.
@@ -106,25 +106,72 @@ const COPY = {
     'Helion charts the silence between worlds — one impossible journey at a time.',
   heroRight:
     'Welcome to a world of discovery and boundless horizons. Our mission is to take you where maps end.',
-  sawItFirst:
-    'Halfway out, the rings rose over the curve of his visor — a world no chart had promised. Helion was built for this exact silence.',
-  distance:
-    'The first crossing opens in 2027. Twelve seats, one window that never repeats itself.',
+  missionLabel: 'Mission 04 — First Contact',
+  sawLead:
+    'Reflected in his visor: a world no one has named. Ninety million kilometres of cold dark, and still — it looked close enough to touch.',
+  sawBody:
+    'Every instrument said the same thing: turn back. The fuel margins, the radiation curve, the silence on every channel. He stayed another orbit anyway — some things you measure, and some things you witness.',
+  civLabel: 'The First Civilian Voyage',
+  civBody:
+    'Every expedition begins the same way: someone stands still long enough to really look.',
+  joinBody:
+    'Join the first voyage beyond the belt. One horizon that will never look the same.',
 } as const
 
-function Wordmark() {
+const NAV_LINKS = ['Missions', 'Fleet', 'Crew', 'Journal'] as const
+
+function Nav() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-6 z-50 text-center text-[11px] uppercase tracking-[0.45em] text-white/70">
-      Helion
+    <header className="fixed inset-x-0 top-0 z-100 flex items-center justify-between px-6 py-5 md:px-10">
+      <a href="#" className="font-display text-2xl italic text-white">
+        Helion
+      </a>
+
+      <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center rounded-full border border-white/20 bg-white/10 px-2 py-2 backdrop-blur-md md:flex">
+        {NAV_LINKS.map((link) => (
+          <a
+            key={link}
+            href="#"
+            className="rounded-full px-4 py-1.5 text-sm text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+          >
+            {link}
+          </a>
+        ))}
+      </nav>
+
+      <button className="hidden rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100 md:block">
+        Reserve a seat
+      </button>
+    </header>
+  )
+}
+
+function Stat({
+  value,
+  label,
+  style,
+}: {
+  value: string
+  label: string
+  style?: CSSProperties
+}) {
+  return (
+    <div style={style}>
+      <div className="font-display text-2xl italic text-white">{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-wide text-white/40">
+        {label}
+      </div>
     </div>
   )
 }
 
-function ScrollCta() {
+function PremiumCta() {
   return (
-    <button className="pointer-events-auto group inline-flex items-center gap-3 rounded-full border border-white/25 px-8 py-3 text-xs uppercase tracking-[0.25em] text-white transition-colors duration-300 hover:bg-white hover:text-black">
+    <button className="group pointer-events-auto mt-6 flex items-center gap-3 rounded-full bg-[#e8a04a] py-2 pl-7 pr-2 text-sm font-semibold text-black transition-all duration-300 hover:scale-[1.03] hover:bg-[#d68d35] hover:shadow-[0_10px_40px_-10px_rgba(232,160,74,0.5)]">
       Reserve your seat
-      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/85 transition-transform duration-300 group-hover:rotate-45">
+        <ArrowUpRight size={16} className="text-[#e8a04a]" />
+      </span>
     </button>
   )
 }
@@ -177,8 +224,13 @@ function PinnedHero() {
   }, [])
 
   const showA = p <= 0.01
-  const showB = p >= 0.4 && p < 0.63
-  const showC = p >= 0.92
+
+  // Block B: cascade pours in p 0.40→0.52, reading window to 0.59,
+  // then a long soft exit (fade + 20px upward drift) p 0.59→0.65.
+  const hpB = clamp01((p - 0.4) / 0.12)
+  const fadeB = p < 0.59 ? 1 : 1 - clamp01((p - 0.59) / 0.06)
+  // Block C: cascade pours in p 0.92→1.0.
+  const hpC = clamp01((p - 0.92) / 0.08)
 
   return (
     <div ref={wrapperRef} className="relative h-[600vh]">
@@ -191,6 +243,16 @@ function PinnedHero() {
           playsInline
           preload="auto"
           className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+
+        {/* Mobile scrims: keep text legible over the bright suit */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-1/2 bg-gradient-to-t from-black/70 to-transparent md:hidden" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 h-2/5 bg-gradient-to-b from-black/60 to-transparent md:hidden" />
+
+        {/* Warm glow vignette behind the small figure (block C) */}
+        <div
+          className="pointer-events-none absolute inset-0 z-30 bg-[radial-gradient(ellipse_55%_45%_at_50%_100%,rgba(232,160,74,0.14),transparent_70%)]"
+          style={{ opacity: hpC * 0.45 }}
         />
 
         {/* Loader */}
@@ -251,57 +313,102 @@ function PinnedHero() {
           <ChevronDown className="h-5 w-5 animate-bounce-slow text-white/50" />
         </div>
 
-        {/* BLOCK B — hold on the helmet close-up (CLIP1_END) */}
+        {/* BLOCK B — helmet close-up hold, mission brief on the right */}
         <div
-          className={`pointer-events-none absolute inset-0 z-40 ${blockVisibility(showB)}`}
+          className="pointer-events-none absolute z-50 max-md:inset-x-0 max-md:bottom-[8%] max-md:px-6 md:right-[8%] md:top-1/2 md:max-w-[460px] md:-translate-y-1/2"
+          style={{
+            opacity: fadeB,
+            visibility: hpB > 0 && fadeB > 0 ? 'visible' : 'hidden',
+          }}
         >
-          <div className="absolute inset-x-0 bottom-[12%] max-w-[440px] px-6 text-left md:bottom-auto md:left-auto md:right-[7%] md:top-1/2 md:-translate-y-1/2 md:px-0">
-            <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.03em] md:text-6xl">
-              <Words
-                text="He saw it first."
-                hp={p}
-                start={0.42}
-                step={0.02}
-                span={0.12}
-                dy={28}
-                blur={14}
-                accent={[3]}
-              />
+          {/* exit drift lives on an inner wrapper so it can't fight the positioning transforms */}
+          <div style={{ transform: `translateY(${-20 * (1 - fadeB)}px)` }}>
+            <div
+              className="text-[11px] uppercase tracking-[0.3em] text-white/40"
+              style={revB(hpB, 0)}
+            >
+              {COPY.missionLabel}
+            </div>
+            <h2 className="mt-4 text-5xl font-light leading-[1.05] tracking-[-0.02em] text-white md:text-6xl">
+              <Words text="He saw" hp={hpB} start={0.1} dy={28} blur={14} />
+              <br />
+              <span className="inline-block" style={revB(hpB, 0.26)}>
+                it
+              </span>{' '}
+              <span
+                className="inline-block font-display italic"
+                style={revB(hpB, 0.34)}
+              >
+                first
+              </span>
             </h2>
             <p
-              className="mt-6 max-w-[360px] text-sm leading-relaxed text-white/70 [text-shadow:0_1px_14px_rgba(0,0,0,0.95)]"
-              style={rev(p, 0.5, 0.1)}
+              className="mt-6 text-base leading-relaxed text-white/80"
+              style={revB(hpB, 0.44)}
             >
-              {COPY.sawItFirst}
+              {COPY.sawLead}
             </p>
+            <p
+              className="mt-4 text-sm leading-relaxed text-white/55"
+              style={revB(hpB, 0.54)}
+            >
+              {COPY.sawBody}
+            </p>
+            <div className="mt-6 h-px w-12 bg-white/20" style={revB(hpB, 0.64)} />
+            <div className="mt-5 flex gap-10">
+              <Stat value="92M km" label="distance" style={revB(hpB, 0.68)} />
+              <Stat value="311 days" label="outbound" style={revB(hpB, 0.75)} />
+              <Stat value="1 of 12" label="crew" style={revB(hpB, 0.82)} />
+            </div>
           </div>
         </div>
 
-        {/* BLOCK C — arrival, final frame */}
+        {/* BLOCK C — final frame, editorial layout around the small figure */}
         <div
-          className={`pointer-events-none absolute inset-0 z-40 ${blockVisibility(showC)}`}
+          className="pointer-events-none absolute inset-0 z-50"
+          style={{ visibility: hpC > 0 ? 'visible' : 'hidden' }}
         >
-          <div className="absolute inset-x-0 bottom-[12%] px-6 text-left md:left-[7%] md:max-w-[560px] md:px-0">
-            <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.03em] md:text-6xl">
-              <Words
-                text="Distance is just a story we tell."
-                hp={p}
-                start={0.92}
-                step={0.007}
-                span={0.035}
-                dy={28}
-                blur={14}
-                accent={[4]}
-              />
-            </h2>
-            <p
-              className="mt-6 max-w-[400px] text-sm leading-relaxed text-white/70 [text-shadow:0_1px_14px_rgba(0,0,0,0.95)]"
-              style={rev(p, 0.95, 0.04)}
-            >
-              {COPY.distance}
-            </p>
-            <div className="mt-8" style={revB(p, 0.96, 0.035)}>
-              <ScrollCta />
+          <h2 className="absolute inset-x-0 top-[10%] px-6 text-center text-5xl font-light leading-[1.02] tracking-[-0.02em] text-white max-md:top-[12%] md:text-7xl">
+            <Words text="Distance is just" hp={hpC} start={0} step={0.06} />
+            <br />
+            <span className="font-display italic">
+              <Words text="a story we tell" hp={hpC} start={0.18} step={0.06} />
+            </span>
+          </h2>
+
+          <div className="max-md:absolute max-md:inset-x-0 max-md:bottom-[6%] max-md:flex max-md:flex-col max-md:gap-7 max-md:px-6 md:contents">
+            <div className="md:absolute md:bottom-[16%] md:left-[7%] md:max-w-[300px]">
+              <div
+                className="text-[10px] uppercase tracking-[0.3em] text-white/40"
+                style={rev(hpC, 0.3)}
+              >
+                {COPY.civLabel}
+              </div>
+              <p className="mt-3 text-sm text-white/65" style={rev(hpC, 0.38)}>
+                {COPY.civBody}
+              </p>
+              <div className="mt-5 h-px w-12 bg-white/20" style={rev(hpC, 0.46)} />
+              <div className="mt-4 flex gap-10">
+                <Stat value="12" label="seats" style={rev(hpC, 0.52)} />
+                <Stat value="2027" label="departure" style={rev(hpC, 0.6)} />
+              </div>
+            </div>
+
+            <div className="md:absolute md:bottom-[16%] md:right-[7%] md:max-w-[320px]">
+              <p className="text-sm text-white/65" style={rev(hpC, 0.4)}>
+                {COPY.joinBody}
+              </p>
+              <div style={rev(hpC, 0.52)}>
+                <PremiumCta />
+              </div>
+              <div style={rev(hpC, 0.62)}>
+                <a
+                  href="#"
+                  className="pointer-events-auto mt-4 inline-block text-xs text-white/50 transition-colors hover:text-white"
+                >
+                  View the route →
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -335,26 +442,42 @@ function StaticHero() {
           </p>
         </div>
 
-        <div>
-          <h2 className="text-3xl font-light tracking-[-0.03em] md:text-5xl">
-            He saw it <span className="font-display italic">first.</span>
+        <div className="flex flex-col items-center">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-white/40">
+            {COPY.missionLabel}
+          </div>
+          <h2 className="mt-4 text-3xl font-light tracking-[-0.02em] md:text-5xl">
+            He saw it <span className="font-display italic">first</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-[400px] text-sm leading-relaxed text-white/70">
-            {COPY.sawItFirst}
+          <p className="mx-auto mt-5 max-w-[420px] text-sm leading-relaxed text-white/70">
+            {COPY.sawLead}
           </p>
+          <div className="mt-6 h-px w-12 bg-white/20" />
+          <div className="mt-5 flex gap-10">
+            <Stat value="92M km" label="distance" />
+            <Stat value="311 days" label="outbound" />
+            <Stat value="1 of 12" label="crew" />
+          </div>
         </div>
 
         <div className="flex flex-col items-center">
-          <h2 className="text-3xl font-light tracking-[-0.03em] md:text-5xl">
-            Distance is just a{' '}
-            <span className="font-display italic">story</span> we tell.
+          <div className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+            {COPY.civLabel}
+          </div>
+          <h2 className="mt-4 text-3xl font-light tracking-[-0.02em] md:text-5xl">
+            Distance is just{' '}
+            <span className="font-display italic">a story we tell</span>
           </h2>
           <p className="mx-auto mt-5 max-w-[400px] text-sm leading-relaxed text-white/70">
-            {COPY.distance}
+            {COPY.joinBody}
           </p>
-          <div className="mt-8">
-            <ScrollCta />
-          </div>
+          <PremiumCta />
+          <a
+            href="#"
+            className="pointer-events-auto mt-4 inline-block text-xs text-white/50 transition-colors hover:text-white"
+          >
+            View the route →
+          </a>
         </div>
 
         <p className="text-2xl font-light tracking-[-0.02em] text-white/80">
@@ -388,7 +511,7 @@ export default function App() {
 
   return (
     <main className="bg-black text-white">
-      <Wordmark />
+      <Nav />
       {reduced ? <StaticHero /> : <PinnedHero />}
     </main>
   )
